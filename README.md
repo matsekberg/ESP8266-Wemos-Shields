@@ -1,7 +1,8 @@
 # Sonoff-Switch-TeHu
 
-Firmware to use a Sonoff TH10/16 device as a remote relay and temp/humidity sensor with MQTT and WiFi capabilities.
+Firmware for a Wemos d1 mini device using Wemos shields with MQTT and WiFi capabilities.
+
 
 !!! WORK IN PROGRESS !!!
 
-Learn more in the wiki: https://github.com/matsekberg/Sonoff-Switch-TeHu/wiki
+Learn more in the wiki: https://github.com/matsekberg/ESP8266-Wemos-Shields/wiki
