@@ -1,4 +1,4 @@
-# Sonoff-Switch-TeHu
+# ESP8266-Wemos-Shields
 
 Firmware for a Wemos d1 mini device using Wemos shields with MQTT and WiFi capabilities.
 
