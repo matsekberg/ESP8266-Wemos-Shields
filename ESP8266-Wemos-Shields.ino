@@ -19,6 +19,7 @@
    Flash size:  1M (64K SPIFFS)
 
 */
+#define CONFIG_VERSION "WESH002"
 
 #include <ESP8266WiFi.h>
 // must increase max packet size to > 500
@@ -330,7 +331,7 @@ void handleStatusChange() {
   if (sendPong)
   {
     Serial.print(F("MQTT pub: "));
-    String meta = getDeviceMeta();
+    String meta = getDeviceMeta(CONFIG_VERSION);
     Serial.print(meta);
     Serial.print(F(" to "));
     Serial.println(pongMetaTopic);
@@ -409,7 +410,7 @@ void setup() {
 
   digitalWrite(LED_PIN, HIGH); //LED off.
 
-  initWifiManager(false);
+  initWifiManager(CONFIG_VERSION, false);
 
   // after wifi and parameters are configured, create publish topics
   eventTopic = String(F("event/")) + custom_unit_id.getValue() + String(F("/switch"));
