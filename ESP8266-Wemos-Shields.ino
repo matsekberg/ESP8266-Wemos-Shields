@@ -21,45 +21,19 @@
 */
 #define CONFIG_VERSION "WESH002"
 
-#include <ESP8266WiFi.h>
-// must increase max packet size to > 500
-#include <PubSubClient.h>
-#include <ESP8266mDNS.h>
-#include <WiFiUdp.h>
+#include "sensorlibs.h"
 #include <ArduinoOTA.h>
-#include "DHT.h"
-#include <WEMOS_Matrix_LED.h>
 
-#include <support/wifi-manager.ino>          
-#include <support/mqtt-support.ino>          
+#include "support/includes.h"
+
+
+
 
 #define LONG_PRESS_MS 1000
 #define SHORT_PRESS_MS 100
 #define CONFIG_WIFI_PRESS_MS 5000
 #define CONFIG_TOUCHES_COUNT 3
 #define MQTT_CHECK_MS 15000
-
-//#define F(x) (x)
-
-////// config values
-//define your default values here, if there are different values in config.json, they are overwritten.
-char mqtt_server[40] = "10.0.1.50";
-char mqtt_port[6] = "1883";
-char mqtt_user[24] = "";
-char mqtt_pass[24] = "";
-char unit_id[16] = "wesh0";
-char group_id[16] = "weshgrp0";
-
-// The extra parameters to be configured (can be either global or just in the setup)
-// After connecting, parameter.getValue() will get you the configured value
-// id/name placeholder/prompt default length
-WiFiManagerParameter custom_mqtt_server = NULL;
-WiFiManagerParameter custom_mqtt_port = NULL;
-WiFiManagerParameter custom_mqtt_user = NULL;
-WiFiManagerParameter custom_mqtt_pass = NULL;
-WiFiManagerParameter custom_unit_id = NULL;
-WiFiManagerParameter custom_group_id = NULL;
-
 
 #define OTA_PASS "UPDATE_PW"
 #define OTA_PORT 8266
@@ -68,6 +42,25 @@ WiFiManagerParameter custom_group_id = NULL;
 #define LED_PIN     2  // GPIO2, pin 17, D4
 #define RELAY_PIN   5  // GPIO5, pin 20, D1 (SCL)
 #define LED2812_PIN 4  // GPIO4, pin 19, D2 (SDA)
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+unsigned long uptime = 0;
+
+#include "topics.h"
+#include "support/mqtt-support.cpp"
+#include "support/wifi-manager.cpp"
+
+
+
+
+
+//#define F(x) (x)
+
+
+
+
+
 
 // GPIO Dx |  BMP180  Button  2812LED  Relay  DHTv2  AM2302  DHT11  DHT12  Matrix  OLED
 //                                                                   0x??          0x3C
@@ -100,7 +93,7 @@ volatile boolean configWifi = false;
 volatile boolean sendEvent = true;
 boolean sendStatus = true;
 boolean sendPong = false;
-unsigned long uptime = 0;
+
 
 // LED Matrix
 MLED* matrixLED = NULL;
@@ -116,31 +109,9 @@ boolean sendSensors = false;
 
 unsigned long lastMQTTCheck = -MQTT_CHECK_MS; //This will force an immediate check on init.
 
-WiFiClient espClient;
-PubSubClient client(espClient);
-
 DHT dht(DHTPIN, DHTTYPE);
 
 bool printedWifiToSerial = false;
-
-// these are defined after wifi connect and parameters are set (in setup())
-String eventTopic;        // published when the switch is touched
-String groupEventTopic;   // published when the switch was long touched
-String statusTopic;       // published when the relay changes state wo switch touch
-String sensorTempTopic;   // publish temp sensor value
-String sensorHumidTopic;  // publish humidity sensor value
-String pongStatusTopic;   // publish node status topic
-String pongMetaTopic;     // publish node meta topic
-String pingTopic;         // subscribe to nodes ping topic
-String actionTopic;       // subscribed to to change relay status
-String groupActionTopic;  // subscribed to to change relay status based on groupid
-
-String matrixActionTopic; // subscribed to to change LED matrix data "SXYXYXY", S=0 off, S=1 = on, x/y = 0..7
-
-#define MAX_SUBSCRIBED_TOPICS 6
-String* subscribedTopics[MAX_SUBSCRIBED_TOPICS];
-uint8_t noSubscribedTopics = 0;
-
 
 //
 // MQTT message arrived, decode
@@ -264,24 +235,24 @@ void handleStatusChange() {
   // Update LED matrix
   if (updateMatrix)
   {
-    //if (!matrixLEDInit)
+    if (matrixLED == NULL)
     {
       Serial.println(F("Init matrix"));
       matrixLED = new MLED(5); //set intensity=5
-      matrixLEDInit = true;
-      delay(10);
-      matrixLED.clear();
+      //delay(10);
+      matrixLED->clear();
     }
     if (matrixLen == 0)
     {
       Serial.println(F("Clear matrix"));
-      matrixLED.clear();
-      matrixLED.display();
+      matrixLED->clear();
     }
     else
     {
       Serial.print(F("Matrix len: "));
       Serial.println(matrixLen);
+
+      matrixLED->clear();
       for (uint8_t p = 0; p < matrixLen; p += 2)
       {
         uint8_t x = matrixData[p] & 7;
@@ -290,10 +261,12 @@ void handleStatusChange() {
         Serial.print(x);
         Serial.print(F(","));
         Serial.println(y);
-        matrixLED.dot(x, y);
-        matrixLED.display();
+        matrixLED->dot(x, y);
+        delay(1);
       }
     }
+    matrixLED->display();
+    // it only works a few seconds is using the same instance all the time :(
     matrixLED = NULL;
     updateMatrix = false;
   }
@@ -396,9 +369,12 @@ void setup() {
   pingSTopic = String(F("ping/nodes"));
   matrixActionSTopic = String(F("action/")) + custom_unit_id.getValue() + String(F("/matrix"));
   // pointer of topics
-  subscribedTopics = {&pingSTopic, &actionSTopic, &groupActionSTopic, &matrixActionSTopic};
+  subscribedTopics[0] = &pingSTopic;
+  subscribedTopics[1] = &actionSTopic;
+  subscribedTopics[2] = &groupActionSTopic;
+  subscribedTopics[3] = &matrixActionSTopic;
   noSubscribedTopics = 4;
-   
+
   client.setServer(custom_mqtt_server.getValue(), atoi(custom_mqtt_port.getValue()));
   client.setCallback(MQTTcallback);
 
