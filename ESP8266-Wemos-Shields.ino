@@ -24,11 +24,6 @@
 #include "sensorlibs.h"
 #include <ArduinoOTA.h>
 
-#include "support/includes.h"
-
-
-
-
 #define LONG_PRESS_MS 1000
 #define SHORT_PRESS_MS 100
 #define CONFIG_WIFI_PRESS_MS 5000
@@ -43,45 +38,22 @@
 #define RELAY_PIN   5  // GPIO5, pin 20, D1 (SCL)
 #define LED2812_PIN 4  // GPIO4, pin 19, D2 (SDA)
 
+// support stuff
+#include "support/includes.h"
 WiFiClient espClient;
 PubSubClient client(espClient);
 unsigned long uptime = 0;
-
 #include "topics.h"
 #include "support/mqtt-support.cpp"
 #include "support/wifi-manager.cpp"
 
-
-
-
-
-//#define F(x) (x)
-
-
-
-
-
-
-// GPIO Dx |  BMP180  Button  2812LED  Relay  DHTv2  AM2302  DHT11  DHT12  Matrix  OLED
-//                                                                   0x??          0x3C
-//  13  D7                                                                    DIN
-//  14  D5                                                                    CLK
-//   5  D1      SCL                       X    SCL                    SCL           SCL
-//   4  D2      SDA              X             SDA                    SDA           SDA
-//   2  D4                                              X      X
-//   0  D3               X
-//
 
 // Wemos Matrix
 //   shield: https://wiki.wemos.cc/products:d1_mini_shields:matrix_led_shield
 //   library: https://github.com/wemos/WEMOS_Matrix_LED_Shield_Arduino_Library
 // Wemos OLED shield: https://wiki.wemos.cc/products:d1_mini_shields:oled_shield
 
-#define DHTPIN 14
 
-//#define DHTTYPE DHT11   // DHT 11
-//#define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
-#define DHTTYPE DHT21   // DHT 21 (AM2301)
 
 volatile int desiredRelayState = 0;
 volatile int relayState = 0;
@@ -103,14 +75,20 @@ boolean updateMatrix = false;
 char matrixData[MATRIX_MAXLEN];
 uint8_t matrixLen = 0;
 
+// DHT stuff
+#define DHTPIN 14
+
+//#define DHTTYPE DHT11   // DHT 11
+//#define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
+#define DHTTYPE DHT21   // DHT 21 (AM2301)
+
+DHT dht(DHTPIN, DHTTYPE);
 float humid = NAN;
 float temp = NAN;
 boolean sendSensors = false;
 
+
 unsigned long lastMQTTCheck = -MQTT_CHECK_MS; //This will force an immediate check on init.
-
-DHT dht(DHTPIN, DHTTYPE);
-
 bool printedWifiToSerial = false;
 
 //
