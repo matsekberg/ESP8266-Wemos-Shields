@@ -101,7 +101,7 @@ boolean sendPong = false;
 unsigned long uptime = 0;
 
 // LED Matrix
-MLED matrixLED = NULL;
+MLED* matrixLED = NULL;
 boolean matrixLEDInit = false;
 #define MATRIX_MAXLEN 64*2
 boolean updateMatrix = false;
@@ -296,7 +296,7 @@ void handleStatusChange() {
     //if (!matrixLEDInit)
     {
       Serial.println(F("Init matrix"));
-      matrixLED = MLED(5); //set intensity=5
+      matrixLED = new MLED(5); //set intensity=5
       matrixLEDInit = true;
       delay(10);
       matrixLED.clear();
@@ -323,6 +323,7 @@ void handleStatusChange() {
         matrixLED.display();
       }
     }
+    matrixLED = NULL;
     updateMatrix = false;
   }
 
