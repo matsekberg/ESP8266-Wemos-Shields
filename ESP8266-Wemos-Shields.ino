@@ -136,40 +136,9 @@ String groupActionTopic;  // subscribed to to change relay status based on group
 
 String matrixActionTopic; // subscribed to to change LED matrix data "SXYXYXY", S=0 off, S=1 = on, x/y = 0..7
 
-//
-// Connect to MQTT broker
-// Subscribe to topics, flash LED etc
-//
-void checkMQTTConnection() {
-  Serial.print(F("MQTT conn? "));
-  if (client.connected()) Serial.println(F("OK"));
-  else {
-    if (WiFi.status() == WL_CONNECTED) {
-      //Wifi connected, attempt to connect to server
-      Serial.print(F("new connection: "));
-      if (client.connect(custom_unit_id.getValue(), custom_mqtt_user.getValue(), custom_mqtt_pass.getValue())) {
-        Serial.println(F("connected"));
-        client.subscribe(pingTopic.c_str());
-        client.subscribe(actionTopic.c_str());
-        client.subscribe(groupActionTopic.c_str());
-        client.publish(pongStatusTopic.c_str(), "connected");
-        client.subscribe(matrixActionTopic.c_str());
-      } else {
-        Serial.print(F("failed, rc="));
-        Serial.println(client.state());
-      }
-    }
-    else {
-      //Wifi isn't connected, so no point in trying now.
-      Serial.println(F(" Not connected to WiFI AP, abandoned connect."));
-    }
-  }
-  //Set the status LED to ON if we are connected to the MQTT server
-  if (client.connected())
-    digitalWrite(LED_PIN, LOW);
-  else
-    digitalWrite(LED_PIN, HIGH);
-}
+#define MAX_SUBSCRIBED_TOPICS 6
+String* subscribedTopics[MAX_SUBSCRIBED_TOPICS];
+uint8_t noSubscribedTopics = 0;
 
 
 //
@@ -181,7 +150,7 @@ void MQTTcallback(char* topic, byte* payload, unsigned int length) {
   Serial.println(topic);
 
   // Relay actions
-  if (!strcmp(topic, actionTopic.c_str()) || !strcmp(topic, groupActionTopic.c_str()))
+  if (!strcmp(topic, actionSTopic.c_str()) || !strcmp(topic, groupActionSTopic.c_str()))
   {
     if ((char)payload[0] == '1' || ! strncasecmp_P((char *)payload, "on", length))
     {
@@ -202,7 +171,7 @@ void MQTTcallback(char* topic, byte* payload, unsigned int length) {
   }
 
   // LED matrix actions
-  if (!strcmp(topic, matrixActionTopic.c_str()) && (length % 2 == 0) && (length <= MATRIX_MAXLEN))
+  if (!strcmp(topic, matrixActionSTopic.c_str()) && (length % 2 == 0) && (length <= MATRIX_MAXLEN))
   {
     if (length > 0)
     {
@@ -213,7 +182,7 @@ void MQTTcallback(char* topic, byte* payload, unsigned int length) {
   }
 
   // Ping action
-  if (!strcmp(topic, pingTopic.c_str()))
+  if (!strcmp(topic, pingSTopic.c_str()))
   {
     sendPong = true;
   }
@@ -421,11 +390,14 @@ void setup() {
   pongStatusTopic = String(F("pong/")) + custom_unit_id.getValue() + String(F("/status"));
   pongMetaTopic = String(F("pong/")) + custom_unit_id.getValue() + String(F("/meta"));
   // and subscribe topic
-  actionTopic = String(F("action/")) + custom_unit_id.getValue() + String(F("/relay"));
-  groupActionTopic = String(F("action/")) + custom_group_id.getValue() + String(F("/relay"));
-  pingTopic = String(F("ping/nodes"));
-  matrixActionTopic = String(F("action/")) + custom_unit_id.getValue() + String(F("/matrix"));
-
+  actionSTopic = String(F("action/")) + custom_unit_id.getValue() + String(F("/relay"));
+  groupActionSTopic = String(F("action/")) + custom_group_id.getValue() + String(F("/relay"));
+  pingSTopic = String(F("ping/nodes"));
+  matrixActionSTopic = String(F("action/")) + custom_unit_id.getValue() + String(F("/matrix"));
+  // pointer of topics
+  subscribedTopics = {&pingSTopic, &actionSTopic, &groupActionSTopic, &matrixActionSTopic};
+  noSubscribedTopics = 4;
+   
   client.setServer(custom_mqtt_server.getValue(), atoi(custom_mqtt_port.getValue()));
   client.setCallback(MQTTcallback);
 
@@ -481,7 +453,7 @@ void loop() {
   if (configWifi) {
     espClient.stop();
     delay(1000);
-    initWifiManager(true);
+    initWifiManager(CONFIG_VERSION, true);
   }
 
   delay(50);
