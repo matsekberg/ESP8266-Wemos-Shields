@@ -30,7 +30,8 @@
 #include "DHT.h"
 #include <WEMOS_Matrix_LED.h>
 
-#include <support/WiFiManager.h>          
+#include <support/WiFiManager.ino>          
+#include <support/WiFiManager.ino>          
 
 #define LONG_PRESS_MS 1000
 #define SHORT_PRESS_MS 100
