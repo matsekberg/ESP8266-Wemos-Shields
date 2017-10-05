@@ -29,7 +29,7 @@
 #include "DHT.h"
 #include <WEMOS_Matrix_LED.h>
 
-#include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager
+#include <support/WiFiManager.h>          
 
 #define LONG_PRESS_MS 1000
 #define SHORT_PRESS_MS 100
