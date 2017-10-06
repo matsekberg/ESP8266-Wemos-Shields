@@ -384,12 +384,14 @@ void setup() {
   groupActionSTopic = String(F("action/")) + custom_group_id.getValue() + String(F("/relay"));
   pingSTopic = String(F("ping/nodes"));
   matrixActionSTopic = String(F("action/")) + custom_unit_id.getValue() + String(F("/matrix"));
+  accelActionSTopic = String(F("action/")) + custom_unit_id.getValue() + String(F("/accel"));
   // pointer of topics
   subscribedTopics[0] = &pingSTopic;
   subscribedTopics[1] = &actionSTopic;
   subscribedTopics[2] = &groupActionSTopic;
   subscribedTopics[3] = &matrixActionSTopic;
-  noSubscribedTopics = 4;
+  subscribedTopics[4] = &accelActionSTopic;
+  noSubscribedTopics = 5;
 
   client.setServer(custom_mqtt_server.getValue(), atoi(custom_mqtt_port.getValue()));
   client.setCallback(MQTTcallback);
