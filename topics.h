@@ -27,6 +27,7 @@ String groupEventTopic;    // published when the switch was long touched
 String statusTopic;        // published when the relay changes state wo switch touch
 String sensorTempTopic;    // publish temp sensor value
 String sensorHumidTopic;   // publish humidity sensor value
+String sensorPressTopic;   // publish pressure sensor value
 String pongStatusTopic;    // publish node status topic
 String pongMetaTopic;      // publish node meta topic
 String pingSTopic;         // subscribe to nodes ping topic
