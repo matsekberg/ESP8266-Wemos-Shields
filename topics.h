@@ -33,7 +33,8 @@ String pingSTopic;         // subscribe to nodes ping topic
 String actionSTopic;       // subscribed to to change relay status
 String groupActionSTopic;  // subscribed to to change relay status based on groupid
 
-String matrixActionSTopic; // subscribed to to change LED matrix data "SXYXYXY", S=0 off, S=1 = on, x/y = 0..7
+String matrixActionSTopic; // subscribed to change LED matrix data "SXYXYXY", S=0 off, S=1 = on, x/y = 0..7
+String accelActionSTopic; // subscribed to get accel data
 
 #define MAX_SUBSCRIBED_TOPICS 6
 String* subscribedTopics[MAX_SUBSCRIBED_TOPICS];
