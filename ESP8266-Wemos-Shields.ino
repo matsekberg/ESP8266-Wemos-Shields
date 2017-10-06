@@ -87,6 +87,9 @@ float humid = NAN;
 float temp = NAN;
 boolean sendSensors = false;
 
+// ADXL345 stuff
+Adafruit_ADXL345_Unified* accel = NULL;
+
 
 unsigned long lastMQTTCheck = -MQTT_CHECK_MS; //This will force an immediate check on init.
 bool printedWifiToSerial = false;
@@ -131,6 +134,8 @@ void MQTTcallback(char* topic, byte* payload, unsigned int length) {
     updateMatrix = true;
   }
 
+   // ADXL345 actions
+   
   // Ping action
   if (!strcmp(topic, pingSTopic.c_str()))
   {
@@ -249,6 +254,39 @@ void handleStatusChange() {
     updateMatrix = false;
   }
 
+   // ADXL345
+   if (1==2) 
+   {
+      if (accel345 == NULL)
+      {
+         accel345 = new Adafruit_ADXL345_Unified(12345);
+         if(!accel.begin())
+             /* There was a problem detecting the ADXL345 ... check your connections */
+             accel345 = NULL;
+            Serial.println("Ooops, no ADXL345 detected ... Check your wiring!");
+          } 
+           else
+          {
+              /* Set the range to whatever is appropriate for your project */
+              accel345.setRange(ADXL345_RANGE_16_G);
+              // displaySetRange(ADXL345_RANGE_8_G);
+              // displaySetRange(ADXL345_RANGE_4_G);
+              // displaySetRange(ADXL345_RANGE_2_G);
+          }
+      }
+      else
+      {
+         /* Get a new sensor event */ 
+         sensors_event_t event; 
+         accel345.getEvent(&event);
+ 
+         /* Display the results (acceleration is measured in m/s^2) */
+         Serial.print("X: "); Serial.print(event.acceleration.x); Serial.print("  ");
+         Serial.print("Y: "); Serial.print(event.acceleration.y); Serial.print("  ");
+         Serial.print("Z: "); Serial.print(event.acceleration.z); Serial.print("  ");Serial.println("m/s^2 ");
+      }
+   }
+   
   if (sendPong)
   {
     Serial.print(F("MQTT pub: "));
