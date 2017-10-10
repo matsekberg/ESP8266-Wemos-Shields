@@ -19,7 +19,10 @@
    Flash size:  1M (64K SPIFFS)
 
 */
+
 #define CONFIG_VERSION "WESH002"
+
+// DO NOT CHANGE
 
 #include "sensorlibs.h"
 #include <ArduinoOTA.h>
@@ -36,23 +39,16 @@
 #define BUTTON_PIN  0  // GPIO0, pin 18, D3
 #define LED_PIN     2  // GPIO2, pin 17, D4
 #define RELAY_PIN   5  // GPIO5, pin 20, D1 (SCL)
-#define LED2812_PIN 4  // GPIO4, pin 19, D2 (SDA)
 
-// support stuff
 #include "support/includes.h"
+
 WiFiClient espClient;
 PubSubClient client(espClient);
 unsigned long uptime = 0;
+
 #include "topics.h"
 #include "support/mqtt-support.cpp"
 #include "support/wifi-manager.cpp"
-
-
-// Wemos Matrix
-//   shield: https://wiki.wemos.cc/products:d1_mini_shields:matrix_led_shield
-//   library: https://github.com/wemos/WEMOS_Matrix_LED_Shield_Arduino_Library
-// Wemos OLED shield: https://wiki.wemos.cc/products:d1_mini_shields:oled_shield
-
 
 
 volatile int desiredRelayState = 0;
@@ -66,6 +62,21 @@ volatile boolean sendEvent = true;
 boolean sendStatus = true;
 boolean sendPong = false;
 
+unsigned long lastMQTTCheck = -MQTT_CHECK_MS; //This will force an immediate check on init.
+bool printedWifiToSerial = false;
+
+// END - DO NOT CHANGE
+
+
+
+// Wemos Matrix
+//   shield: https://wiki.wemos.cc/products:d1_mini_shields:matrix_led_shield
+//   library: https://github.com/wemos/WEMOS_Matrix_LED_Shield_Arduino_Library
+// Wemos OLED shield: https://wiki.wemos.cc/products:d1_mini_shields:oled_shield
+
+
+// LED2812
+#define LED2812_PIN 4  // GPIO4, pin 19, D2 (SDA)
 
 // LED Matrix
 MLED* matrixLED = NULL;
@@ -91,8 +102,6 @@ boolean sendSensors = false;
 Adafruit_ADXL345_Unified* accel = NULL;
 
 
-unsigned long lastMQTTCheck = -MQTT_CHECK_MS; //This will force an immediate check on init.
-bool printedWifiToSerial = false;
 
 //
 // MQTT message arrived, decode
