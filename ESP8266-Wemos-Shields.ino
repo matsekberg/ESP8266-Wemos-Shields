@@ -20,52 +20,21 @@
 
 */
 
+// DO EDIT
 #define CONFIG_VERSION "WESH002"
+// END - DO EDIT
+
+
+
 
 // DO NOT CHANGE
-
 #include "sensorlibs.h"
-#include <ArduinoOTA.h>
-
-#define LONG_PRESS_MS 1000
-#define SHORT_PRESS_MS 100
-#define CONFIG_WIFI_PRESS_MS 5000
-#define CONFIG_TOUCHES_COUNT 3
-#define MQTT_CHECK_MS 15000
-
-#define OTA_PASS "UPDATE_PW"
-#define OTA_PORT 8266
-
-#define BUTTON_PIN  0  // GPIO0, pin 18, D3
-#define LED_PIN     2  // GPIO2, pin 17, D4
-#define RELAY_PIN   5  // GPIO5, pin 20, D1 (SCL)
-
 #include "support/includes.h"
-
-WiFiClient espClient;
-PubSubClient client(espClient);
-unsigned long uptime = 0;
-
 #include "topics.h"
 #include "support/mqtt-support.cpp"
 #include "support/wifi-manager.cpp"
-
-
-volatile int desiredRelayState = 0;
-volatile int relayState = 0;
-volatile unsigned long millisSinceChange = 0;
-volatile int noOfConfigTouches = 0;
-
-volatile boolean sendGroupEventTopic = false;
-volatile boolean configWifi = false;
-volatile boolean sendEvent = true;
-boolean sendStatus = true;
-boolean sendPong = false;
-
-unsigned long lastMQTTCheck = -MQTT_CHECK_MS; //This will force an immediate check on init.
-bool printedWifiToSerial = false;
-
 // END - DO NOT CHANGE
+
 
 
 
@@ -78,13 +47,14 @@ bool printedWifiToSerial = false;
 // LED2812
 #define LED2812_PIN 4  // GPIO4, pin 19, D2 (SDA)
 
-// LED Matrix
-MLED* matrixLED = NULL;
-boolean matrixLEDInit = false;
-#define MATRIX_MAXLEN 64*2
-boolean updateMatrix = false;
-char matrixData[MATRIX_MAXLEN];
-uint8_t matrixLen = 0;
+/* LED Matrix
+  MLED* matrixLED = NULL;
+  boolean matrixLEDInit = false;
+  #define MATRIX_MAXLEN 64*2
+  boolean updateMatrix = false;
+  char matrixData[MATRIX_MAXLEN];
+  uint8_t matrixLen = 0;
+*/
 
 // DHT stuff
 #define DHTPIN 14
@@ -96,10 +66,7 @@ uint8_t matrixLen = 0;
 DHT dht(DHTPIN, DHTTYPE);
 float humid = NAN;
 float temp = NAN;
-boolean sendSensors = false;
 
-// ADXL345 stuff
-Adafruit_ADXL345_Unified* accel = NULL;
 
 
 
@@ -107,49 +74,9 @@ Adafruit_ADXL345_Unified* accel = NULL;
 // MQTT message arrived, decode
 // Ok payload: 1/on, 0/off, X/toggle, S/status
 //
-void MQTTcallback(char* topic, byte* payload, unsigned int length) {
+void mqttCallbackHandle(char* topic, byte* payload, unsigned int length) {
   Serial.print(F("MQTT sub: "));
   Serial.println(topic);
-
-  // Relay actions
-  if (!strcmp(topic, actionSTopic.c_str()) || !strcmp(topic, groupActionSTopic.c_str()))
-  {
-    if ((char)payload[0] == '1' || ! strncasecmp_P((char *)payload, "on", length))
-    {
-      desiredRelayState = 1;
-    }
-    else if ((char)payload[0] == '0' || ! strncasecmp_P((char *)payload, "off", length))
-    {
-      desiredRelayState = 0;
-    }
-    else if ((char)payload[0] == 'X' || ! strncasecmp_P((char *)payload, "toggle", length))
-    {
-      desiredRelayState = !desiredRelayState;
-    }
-    else if ((char)payload[0] == 'S' || ! strncasecmp_P((char *)payload, "status", length))
-    {
-      sendStatus = true;
-    }
-  }
-
-  // LED matrix actions
-  if (!strcmp(topic, matrixActionSTopic.c_str()) && (length % 2 == 0) && (length <= MATRIX_MAXLEN))
-  {
-    if (length > 0)
-    {
-      strncpy((char*)matrixData, (const char*)payload, length);
-    }
-    matrixLen = length;
-    updateMatrix = true;
-  }
-
-   // ADXL345 actions
-   
-  // Ping action
-  if (!strcmp(topic, pingSTopic.c_str()))
-  {
-    sendPong = true;
-  }
 }
 
 //
@@ -214,19 +141,9 @@ void buttonChangeCallback() {
 //
 void handleStatusChange() {
 
-  // Relay state is updated via the interrupt *OR* the MQTT callback.
-  if (relayState != desiredRelayState) {
-    Serial.print(F("Chg state to "));
-    Serial.println(desiredRelayState);
-
-    digitalWrite(RELAY_PIN, desiredRelayState);
-    relayState = desiredRelayState;
-    sendStatus = true;
-  }
-
-  // Update LED matrix
-  if (updateMatrix)
-  {
+  /* Update LED matrix
+    if (updateMatrix)
+    {
     if (matrixLED == NULL)
     {
       Serial.println(F("Init matrix"));
@@ -261,78 +178,9 @@ void handleStatusChange() {
     // it only works a few seconds is using the same instance all the time :(
     matrixLED = NULL;
     updateMatrix = false;
-  }
+    } */
 
-   // ADXL345
-   if (1==2) 
-   {
-      if (accel345 == NULL)
-      {
-         accel345 = new Adafruit_ADXL345_Unified(12345);
-         if(!accel.begin())
-             /* There was a problem detecting the ADXL345 ... check your connections */
-             accel345 = NULL;
-            Serial.println("Ooops, no ADXL345 detected ... Check your wiring!");
-          } 
-           else
-          {
-              /* Set the range to whatever is appropriate for your project */
-              accel345.setRange(ADXL345_RANGE_16_G);
-              // displaySetRange(ADXL345_RANGE_8_G);
-              // displaySetRange(ADXL345_RANGE_4_G);
-              // displaySetRange(ADXL345_RANGE_2_G);
-          }
-      }
-      else
-      {
-         /* Get a new sensor event */ 
-         sensors_event_t event; 
-         accel345.getEvent(&event);
- 
-         /* Display the results (acceleration is measured in m/s^2) */
-         Serial.print("X: "); Serial.print(event.acceleration.x); Serial.print("  ");
-         Serial.print("Y: "); Serial.print(event.acceleration.y); Serial.print("  ");
-         Serial.print("Z: "); Serial.print(event.acceleration.z); Serial.print("  ");Serial.println("m/s^2 ");
-      }
-   }
-   
-  if (sendPong)
-  {
-    Serial.print(F("MQTT pub: "));
-    String meta = getDeviceMeta(CONFIG_VERSION);
-    Serial.print(meta);
-    Serial.print(F(" to "));
-    Serial.println(pongMetaTopic);
-    client.publish(pongMetaTopic.c_str(), meta.c_str());
-    sendPong = false;
-  }
-
-  // publish event if touched
-  if (sendEvent) {
-    const char* payload = (relayState == 0) ? "0" : "1";
-    Serial.print(F("MQTT pub: "));
-    Serial.print(payload);
-    Serial.print(F(" to "));
-    if (sendGroupEventTopic) {
-      Serial.println(groupEventTopic);
-      client.publish(groupEventTopic.c_str(), payload);
-    } else {
-      Serial.println(eventTopic);
-      client.publish(eventTopic.c_str(), payload);
-    }
-    sendEvent = false;
-  }
-
-  // publish state when requested to do so
-  if (sendStatus) {
-    const char* payload = (relayState == 0) ? "0" : "1";
-    Serial.print(F("MQTT pub: "));
-    Serial.print(payload);
-    Serial.print(F(" to "));
-    Serial.println(statusTopic);
-    client.publish(statusTopic.c_str(), payload);
-    sendStatus = false;
-  }
+  mqttPublish();
 
   if (sendSensors)
   {
@@ -365,6 +213,18 @@ void handleStatusChange() {
 }
 
 
+void mqttCallbackCreateTopics() {
+  sensorTopic = String(F("sensor/")) + custom_unit_id.getValue() + String(F("/value"));
+  //matrixActionSTopic = String(F("action/")) + custom_unit_id.getValue() + String(F("/matrix"));
+  accelActionSTopic = String(F("action/")) + custom_unit_id.getValue() + String(F("/accel"));
+  // pointer of topics
+
+  //subscribedTopics[0] = &matrixActionSTopic;
+  //subscribedTopics[0] = &accelActionSTopic;
+  noSubscribedTopics = 0;
+}
+
+
 //
 ////////// SETUP //////////
 //
@@ -375,35 +235,13 @@ void setup() {
   digitalWrite(RELAY_PIN, LOW);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   pinMode(LED_PIN, OUTPUT);
-
   digitalWrite(LED_PIN, HIGH); //LED off.
 
-  initWifiManager(CONFIG_VERSION, false);
+  wifiSetup(CONFIG_VERSION, false);
 
-  // after wifi and parameters are configured, create publish topics
-  eventTopic = String(F("event/")) + custom_unit_id.getValue() + String(F("/switch"));
-  groupEventTopic = String(F("event/")) + custom_group_id.getValue() + String(F("/switch"));
-  statusTopic = String(F("status/")) + custom_unit_id.getValue() + String(F("/relay"));
-  sensorTempTopic = String(F("sensor/")) + custom_unit_id.getValue() + String(F("/temp"));
-  sensorHumidTopic = String(F("sensor/")) + custom_unit_id.getValue() + String(F("/humid"));
-  pongStatusTopic = String(F("pong/")) + custom_unit_id.getValue() + String(F("/status"));
-  pongMetaTopic = String(F("pong/")) + custom_unit_id.getValue() + String(F("/meta"));
-  // and subscribe topic
-  actionSTopic = String(F("action/")) + custom_unit_id.getValue() + String(F("/relay"));
-  groupActionSTopic = String(F("action/")) + custom_group_id.getValue() + String(F("/relay"));
-  pingSTopic = String(F("ping/nodes"));
-  matrixActionSTopic = String(F("action/")) + custom_unit_id.getValue() + String(F("/matrix"));
-  accelActionSTopic = String(F("action/")) + custom_unit_id.getValue() + String(F("/accel"));
-  // pointer of topics
-  subscribedTopics[0] = &pingSTopic;
-  subscribedTopics[1] = &actionSTopic;
-  subscribedTopics[2] = &groupActionSTopic;
-  subscribedTopics[3] = &matrixActionSTopic;
-  subscribedTopics[4] = &accelActionSTopic;
-  noSubscribedTopics = 5;
+  mqttSetup();
 
-  client.setServer(custom_mqtt_server.getValue(), atoi(custom_mqtt_port.getValue()));
-  client.setCallback(MQTTcallback);
+
 
   // OTA setup
   ArduinoOTA.setPort(OTA_PORT);
@@ -423,19 +261,15 @@ void setup() {
 ////////// LOOP //////////
 //
 void loop() {
-  // If we haven't printed WiFi details to Serial port yet, and WiFi now connected,
-  // do so now. (just the once)
-  if (!printedWifiToSerial && WiFi.status() == WL_CONNECTED) {
-    Serial.println(F("WiFi connected"));
-    Serial.println(F("IP address: "));
-    Serial.println(WiFi.localIP());
-    printedWifiToSerial = true;
-  }
+
+  wifiLoop();
+
+  mqttLoop();
 
   // Check MQTT connection
   if (millis() - lastMQTTCheck >= MQTT_CHECK_MS) {
     uptime += MQTT_CHECK_MS / 1000;
-    checkMQTTConnection();
+    mqttCheckConnection();
     // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
     humid = dht.readHumidity();
     // Read temperature as Celsius (the default)
@@ -444,21 +278,10 @@ void loop() {
     sendSensors = true;
   }
 
-  // Handle any pending MQTT messages
-  client.loop();
 
-  // Handle any pending OTA SW updates
-  ArduinoOTA.handle();
 
   // Handle any state change and MQTT publishing
   handleStatusChange();
-
-  // Handle looong touch to reconfigure all parameters
-  if (configWifi) {
-    espClient.stop();
-    delay(1000);
-    initWifiManager(CONFIG_VERSION, true);
-  }
 
   delay(50);
 }
