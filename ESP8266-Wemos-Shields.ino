@@ -25,23 +25,20 @@
 // END - DO EDIT
 
 
-
-
 // DO NOT CHANGE
 #include "sensorlibs.h"
-#include "support/includes.h"
+#include "support/wifi-manager.h"
+#include "support/mqtt-support.h"
+
 #include "topics.h"
-#include "support/mqtt-support.cpp"
 #include "support/wifi-manager.cpp"
+#include "support/mqtt-support.cpp"
 // END - DO NOT CHANGE
 
 
-
-
-// Wemos Matrix
-//   shield: https://wiki.wemos.cc/products:d1_mini_shields:matrix_led_shield
-//   library: https://github.com/wemos/WEMOS_Matrix_LED_Shield_Arduino_Library
-// Wemos OLED shield: https://wiki.wemos.cc/products:d1_mini_shields:oled_shield
+// DEFINE TOPICS HERE
+String sensorTopic;         // published with sensordata
+//String accelActionSTopic;   // published when the switch is touched
 
 
 // LED2812
@@ -58,21 +55,16 @@
 
 // DHT stuff
 #define DHTPIN 14
-
 //#define DHTTYPE DHT11   // DHT 11
 //#define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
 #define DHTTYPE DHT21   // DHT 21 (AM2301)
-
 DHT dht(DHTPIN, DHTTYPE);
 float humid = NAN;
 float temp = NAN;
 
 
-
-
 //
 // MQTT message arrived, decode
-// Ok payload: 1/on, 0/off, X/toggle, S/status
 //
 void mqttCallbackHandle(char* topic, byte* payload, unsigned int length) {
   Serial.print(F("MQTT sub: "));
@@ -180,17 +172,21 @@ void handleStatusChange() {
     updateMatrix = false;
     } */
 
+  // publish relay state, pong, event and status messages
   mqttPublish();
 
   if (sendSensors)
   {
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject& json = jsonBuffer.createObject();
+
     if (!isnan(temp))
     {
       Serial.print(F("MQTT pub: "));
       Serial.print(temp);
       Serial.print(F(" to "));
       Serial.println(sensorTempTopic);
-      client.publish(sensorTempTopic.c_str(), String(temp).c_str());
+      json["temp"] = String(temp).c_str();
     }
     else
     {
@@ -202,21 +198,27 @@ void handleStatusChange() {
       Serial.print(humid);
       Serial.print(F(" to "));
       Serial.println(sensorHumidTopic);
-      client.publish(sensorHumidTopic.c_str(), String(humid).c_str());
+      json["humid"] = String(humid).c_str();
     }
     else
     {
       Serial.println(F("No humidity data"));
     }
+    String jsonStr;
+    json.printTo(jsonStr);
+    client.publish(sensorTopic.c_str(), jsonStr.c_str());
     sendSensors = false;
   }
 }
 
 
+//
+// callback to create custom topics
+//
 void mqttCallbackCreateTopics() {
   sensorTopic = String(F("sensor/")) + custom_unit_id.getValue() + String(F("/value"));
   //matrixActionSTopic = String(F("action/")) + custom_unit_id.getValue() + String(F("/matrix"));
-  accelActionSTopic = String(F("action/")) + custom_unit_id.getValue() + String(F("/accel"));
+  //accelActionSTopic = String(F("action/")) + custom_unit_id.getValue() + String(F("/accel"));
   // pointer of topics
 
   //subscribedTopics[0] = &matrixActionSTopic;
@@ -237,17 +239,11 @@ void setup() {
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH); //LED off.
 
+  // setup wifi
   wifiSetup(CONFIG_VERSION, false);
 
+  // setup mqtt
   mqttSetup();
-
-
-
-  // OTA setup
-  ArduinoOTA.setPort(OTA_PORT);
-  ArduinoOTA.setHostname(custom_unit_id.getValue());
-  ArduinoOTA.setPassword(OTA_PASS);
-  ArduinoOTA.begin();
 
   dht.begin();
 
@@ -262,8 +258,10 @@ void setup() {
 //
 void loop() {
 
+  // handle wifi
   wifiLoop();
 
+  // handle mqtt
   mqttLoop();
 
   // Check MQTT connection
